@@ -175,9 +175,7 @@ def bootstrap(dQ, dV, temperature, cycles=100):
         vardQ[:, n] = fitdQ
 
     # Reject all values which are over a threshold; definition is arbitrary.
-    print(varSS.mean())
     threshold = 1 * varSS.mean() + 5.0 * np.sqrt(varSS.std())
-    print(threshold)
     for n in range(cycles - 1, -1, -1):
         if varSS[n] > threshold:
             # print('Rejecting cycle number {}'.format(n))
@@ -204,6 +202,9 @@ def bootstrap(dQ, dV, temperature, cycles=100):
 
 
 def report(
+    V0,
+    M0,
+    X0,
     syringe_error,
     cell_error,
     heat_error,
@@ -216,9 +217,9 @@ def report(
     dG_sem,
     temperature,
 ):
-    print(f"{'Cell volume = ':<20} {V0:5.5f} L")
-    print(f"{'Cell conc. = ':<20} {M0:5.5f} M")
-    print(f"{'Injectant conc. = ':<20} {X0:5.5f} M")
+    print(f"{'Cell volume = ':<20} {V0:5.7f} L")
+    print(f"{'Cell conc. = ':<20} {M0:5.7f} M")
+    print(f"{'Injectant conc. = ':<20} {X0:5.7f} M")
     print(f"{'Syringe error = ':<20} {syringe_error * 100:4.2f} percent")
     print(f"{'Cell error = ':<20} {cell_error * 100 :4.2f} percent")
     print(f"{'Heat error = ':<20} {heat_error * 100:4.2f} percent")
@@ -287,10 +288,16 @@ if __name__ == "__main__":
         M0 = float(args["M0"])
 
     dQ, dV = process(args["file"], skip)
-    V0 = V0 + skip * dV
+    for index, skipped_injection in enumerate(range(skip)):
+        V0 += dV[index]
+        print(f"Skipping injection number {index + 1}...")
+        print(f"{'New cell volume = ':<20} {V0:5.7f} L")
 
     vardQ, XM, dH, K, N, dG, dG_sem = bootstrap(dQ, dV, temperature, cycles=1000)
     report(
+        V0,
+        M0,
+        X0,
         syringe_error,
         cell_error,
         heat_error,
