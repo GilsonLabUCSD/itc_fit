@@ -287,6 +287,7 @@ if __name__ == "__main__":
         M0 = float(args["M0"])
 
     dQ, dV = process(args["file"], skip)
+    V0 = V0 + skip * dV
 
     vardQ, XM, dH, K, N, dG, dG_sem = bootstrap(dQ, dV, temperature, cycles=1000)
     report(
