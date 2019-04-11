@@ -31,16 +31,19 @@ def process(file, skip):
     heat = data[:, 0] / 1e6  # microcalories to calories
     volume = data[:, 1] / 1e6  # microliters to liters
 
-    return heat[skip:], volume[skip:]
+    return heat, volume
 
 
-def plot(XM, ITC, vardQ, name, dH, K, N, dG):
+def plot(XM, ITC, skip, vardQ, name, dH, K, N, dG):
     """
     Plot the heat as a function of molar ratio, as measured, and the final (?) curve fit.
     I think this takes the best fit from the last bootstrapped cycle, but I'm not sure.
     """
+
+    print(XM[0, 1:] / XM[1, 1:])
+
     fig, ax = plt.subplots(1, figsize=(6 * 1.2, 6))
-    ax.scatter(XM[0, 1:] / XM[1, 1:], ITC, c="k", label="ITC data")
+    ax.scatter(XM[0, 1:] / XM[1, 1:], ITC[skip:], c="k", label="ITC data")
     for index, dQ in enumerate(vardQ.T):
         ax.errorbar(
             XM[0, 1:] / XM[1, 1:],
@@ -92,7 +95,7 @@ def fit(XMa, dH, K, N):
     return dQ
 
 
-def bootstrap(dQ, dV, temperature, cycles=100):
+def bootstrap(dQ, dV, V0, skip, temperature, cycles=100):
     """
     Bootstrap the fitting of dQ given re-sampled uncertainties.
     """
@@ -100,13 +103,13 @@ def bootstrap(dQ, dV, temperature, cycles=100):
     # the array so that we always use the same number of bootstrapping cycles
     realcycles = cycles
     cycles = int(cycles * 1.1)
-    varITC = np.zeros([len(dQ)])
-    varheat = np.zeros([len(dQ), cycles])
+    varITC = np.zeros([len(dQ[skip + 1 :])])
+    varheat = np.zeros([len(dQ[skip + 1 :]), cycles])
     vardH = np.zeros([cycles])
     varK = np.zeros([cycles])
     varN = np.zeros([cycles])
     varSS = np.zeros([cycles])
-    vardQ = np.zeros([len(dQ), cycles])
+    vardQ = np.zeros([len(dQ[skip + 1 :]), cycles])
     for n in tqdm(range(cycles)):
         # Initial Guesses
         p0 = np.zeros(3)  # Guess Array
@@ -119,11 +122,14 @@ def bootstrap(dQ, dV, temperature, cycles=100):
         sampled_cell_concentration = np.random.normal(M0, abs(cell_error * M0))
 
         # Find concentrations after each injection
-        XM = np.zeros([2, len(dQ) + 1])
+        XM = np.zeros([2, len(dQ) + 1 - skip])
+
+        print(f"Number of injections to fit = {(len(dQ) + 1 - skip)}")
+
         XM[0, 0] = 0
         XM[1, 0] = 0
 
-        cumulative_volume = np.cumsum(dV)
+        cumulative_volume = np.cumsum(dV[skip + 1 :])
 
         # New Injectant Concentration
         XM[0, 1:] = (cumulative_volume * sampled_syringe_concentration / V0) * (
@@ -141,12 +147,12 @@ def bootstrap(dQ, dV, temperature, cycles=100):
                 injection,
                 abs(np.sqrt(((injection * heat_error) ** 2) + ((base_error) ** 2))),
             )
-            for injection in dQ
+            for injection in dQ[skip:]
         ]
         # Scale nominal Wiseman plot by new bootstrapped syringe concentration
         varITC = [
             injection / (volume * sampled_syringe_concentration)
-            for injection, volume in zip(parITC, dV)
+            for injection, volume in zip(parITC, dV[skip + 1 :])
         ]
 
         # Fit the data
@@ -164,7 +170,7 @@ def bootstrap(dQ, dV, temperature, cycles=100):
         fitdQ = fit(XM, dH, K, N)
 
         SumSqr = 0.0
-        for i in range(len(dQ)):
+        for i in range(len(dQ[skip:])):
             SumSqr += (varITC[i] - fitdQ[i]) ** 2
             varheat[i, n] = fitdQ[i]
 
@@ -288,12 +294,8 @@ if __name__ == "__main__":
         M0 = float(args["M0"])
 
     dQ, dV = process(args["file"], skip)
-    for index, skipped_injection in enumerate(range(skip)):
-        V0 += dV[index]
-        print(f"Skipping injection number {index + 1}...")
-        print(f"{'New cell volume = ':<20} {V0:5.7f} L")
 
-    vardQ, XM, dH, K, N, dG, dG_sem = bootstrap(dQ, dV, temperature, cycles=1000)
+    vardQ, XM, dH, K, N, dG, dG_sem = bootstrap(dQ, dV, V0, skip, temperature, cycles=1)
     report(
         V0,
         M0,
@@ -311,5 +313,5 @@ if __name__ == "__main__":
         temperature,
     )
     ITC = dQ / (dV * X0)
-    plot(XM, ITC, vardQ, args["file"], np.mean(dH), np.mean(K), np.mean(N), dG)
+    plot(XM, ITC, skip, vardQ, args["file"], np.mean(dH), np.mean(K), np.mean(N), dG)
 
