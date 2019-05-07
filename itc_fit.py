@@ -103,13 +103,13 @@ def bootstrap(dQ, dV, V0, skip, temperature, cycles=100):
     # the array so that we always use the same number of bootstrapping cycles
     realcycles = cycles
     cycles = int(cycles * 1.1)
-    varITC = np.zeros([len(dQ[skip + 1 :])])
-    varheat = np.zeros([len(dQ[skip + 1 :]), cycles])
+    varITC = np.zeros([len(dQ) - skip])
+    varheat = np.zeros([len(dQ) - skip, cycles])
     vardH = np.zeros([cycles])
     varK = np.zeros([cycles])
     varN = np.zeros([cycles])
     varSS = np.zeros([cycles])
-    vardQ = np.zeros([len(dQ[skip + 1 :]), cycles])
+    vardQ = np.zeros([len(dQ) - skip, cycles])
     for n in tqdm(range(cycles)):
         # Initial Guesses
         p0 = np.zeros(3)  # Guess Array
@@ -129,8 +129,11 @@ def bootstrap(dQ, dV, V0, skip, temperature, cycles=100):
         XM[0, 0] = 0
         XM[1, 0] = 0
 
-        cumulative_volume = np.cumsum(dV[skip + 1 :])
+        cumulative_volume = np.cumsum(dV)
+        cumulative_volume = cumulative_volume[skip:]
 
+        print(np.shape(cumulative_volume))
+        print(np.shape(XM[0, 1]))
         # New Injectant Concentration
         XM[0, 1:] = (cumulative_volume * sampled_syringe_concentration / V0) * (
             1 / (1 + (cumulative_volume / (2 * V0)))
@@ -147,37 +150,44 @@ def bootstrap(dQ, dV, V0, skip, temperature, cycles=100):
                 injection,
                 abs(np.sqrt(((injection * heat_error) ** 2) + ((base_error) ** 2))),
             )
-            for injection in dQ[skip:]
+            for injection in dQ
         ]
         # Scale nominal Wiseman plot by new bootstrapped syringe concentration
         varITC = [
             injection / (volume * sampled_syringe_concentration)
-            for injection, volume in zip(parITC, dV[skip + 1 :])
+            for injection, volume in zip(parITC, dV)
         ]
+
+        print(varITC)
+        print(varITC[skip:])
 
         # Fit the data
         try:
-            popt, _ = curve_fit(fit, XM, varITC, p0, maxfev=100)
+            popt, _ = curve_fit(fit, XM, varITC[skip:], p0, maxfev=100)
         except RuntimeError:
             print("Curve fit failure. Possibly weak binder.")
-            popt, _ = curve_fit(fit, XM, varITC, p0, maxfev=10000)
+            popt, _ = curve_fit(fit, XM, varITC[skip:], p0, maxfev=10000)
             pass
         dH = popt[0]
         K = popt[1]
         N = popt[2]
 
         # (Print) Original Data, Fit, and find SumSqr
+
         fitdQ = fit(XM, dH, K, N)
 
         SumSqr = 0.0
-        for i in range(len(dQ[skip:])):
-            SumSqr += (varITC[i] - fitdQ[i]) ** 2
-            varheat[i, n] = fitdQ[i]
+        # for i in range(len(dQ)):
+        #     print(np.shape(varITC))
+        #     print(np.shape(fitdQ))
+        #     print(np.shape(varheat))
+        #     SumSqr += (varITC[i] - fitdQ[i]) ** 2
+        #     varheat[i, n] = fitdQ[i]
 
         vardH[n] = dH
         varK[n] = K
         varN[n] = N
-        varSS[n] = SumSqr
+        # varSS[n] = SumSqr
         vardQ[:, n] = fitdQ
 
     # Reject all values which are over a threshold; definition is arbitrary.
