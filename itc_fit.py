@@ -47,7 +47,7 @@ def plot(XM, ITC, vardQ, name, dH, K, N, dG):
     fig, ax = plt.subplots(1, figsize=(6 * 1.2, 6))
     ax.scatter(XM[0, 1:] / XM[1, 1:], ITC, c="k", label="ITC data")
     for index, dQ in enumerate(vardQ.T):
-        ax.errorbar(
+        ax.plot(
             XM[0, 1+skip:] / XM[1, 1+skip:],
             dQ,
             c="r",
@@ -90,7 +90,8 @@ def fit(XMa, dH, K, N):
         )
 
         # Change in heat normalized by amount of injectant
-        # Similar to equation 10
+        # Similar to equation 10 except for the normalization factor dV*X0.
+        # Now the unit is cal/mol; same unit as for exp_dQ_normalized
         dQ[i] = (Q[i] + (dV[i - 1] / V0) * ((Q[i] + Q[i - 1]) / 2) - Q[i - 1]) / (
             dV[i - 1] * X0
         )
@@ -105,7 +106,7 @@ def bootstrap(dQ, dV, temperature, cycles=100):
     # Increase the number of bootstrapping runs by 10 percent. We delete the bad fits afterwards and want to fill up
     # the array so that we always use the same number of bootstrapping cycles
     realcycles = cycles
-    cycles = int(cycles * 1.1)
+    cycles = int(cycles * 1.3)
 
     # All variables which are different between different cycles of the bootstrapping process and stored  start with a
     # leading 'bootstrap_'
@@ -115,10 +116,11 @@ def bootstrap(dQ, dV, temperature, cycles=100):
     bootstrap_N = np.zeros([cycles])
     bootstrap_SS = np.zeros([cycles])
     # We are not fitting the first 'skip' elements. Therefore the array of fitted dQ is smaller. 
-    # As we are only fitting the differences we can ignore the first skip elements in the fitting easily 
+    # As we are only fitting the differences we can ignore the first skip elements in the fitting easily
+    # For every cycle we are storing the full set of calculate dQ values
     bootstrap_dQ = np.zeros([len(dQ)-skip, cycles])
     #print(V0)
-    for n in tqdm(range(cycles)):
+    for cycle in tqdm(range(cycles)):
         # Initial Guesses
         initial_guess = np.zeros(3)  # Guess Array
         initial_guess[0] = -1000.0  # Guess dH
@@ -182,24 +184,24 @@ def bootstrap(dQ, dV, temperature, cycles=100):
         SumSqr = 0.0
         for i in range(skip,len(dQ)):
             SumSqr += (exp_dQ_normalized[i] - fitdQ[i-skip]) ** 2
-            #bootstrap_heat[i-skip, n] = fitdQ[i-skip]
+            #bootstrap_heat[i-skip, cycle] = fitdQ[i-skip]
 
-        bootstrap_dH[n] = dH
-        bootstrap_K[n] = K
-        bootstrap_N[n] = N
-        bootstrap_SS[n] = SumSqr
-        bootstrap_dQ[:, n] = fitdQ
+        bootstrap_dH[cycle] = dH
+        bootstrap_K[cycle] = K
+        bootstrap_N[cycle] = N
+        bootstrap_SS[cycle] = SumSqr
+        bootstrap_dQ[:, cycle] = fitdQ
 
     # Reject all values which are over a threshold; definition is arbitrary.
-    threshold = 1 * bootstrap_SS.mean() + 5.0 * np.sqrt(bootstrap_SS.std())
-    for n in range(cycles - 1, -1, -1):
-        if bootstrap_SS[n] > threshold:
-            # print('Rejecting cycle number {}'.format(n))
-            bootstrap_dH = np.delete(bootstrap_dH, n)
-            bootstrap_K = np.delete(bootstrap_K, n)
-            bootstrap_N = np.delete(bootstrap_N, n)
-            bootstrap_SS = np.delete(bootstrap_SS, n)
-            bootstrap_dQ = np.delete(bootstrap_dQ, n, 1)
+    threshold = 1 * bootstrap_SS.mean() + 7.0 * np.sqrt(bootstrap_SS.std())
+    for cycle in range(cycles - 1, -1, -1):
+        if bootstrap_SS[cycle] > threshold:
+            #print('Rejecting cycle number {}'.format(cycle))
+            bootstrap_dH = np.delete(bootstrap_dH, cycle)
+            bootstrap_K = np.delete(bootstrap_K, cycle)
+            bootstrap_N = np.delete(bootstrap_N, cycle)
+            bootstrap_SS = np.delete(bootstrap_SS, cycle)
+            bootstrap_dQ = np.delete(bootstrap_dQ, cycle, 1)
     # Only use number of bootstrapping cycles defined in the main program.
     # print(realcycles)
     bootstrap_dH = bootstrap_dH[:realcycles]
@@ -313,7 +315,7 @@ if __name__ == "__main__":
     #    print(f"{'New cell volume = ':<20} {V0:5.7f} L")
 
     # dQ and XM include the complete data from the ITC output file.
-    vardQ, XM, dH, K, N, dG, dG_sem = bootstrap(dQ, dV, temperature, cycles=100)
+    vardQ, XM, dH, K, N, dG, dG_sem = bootstrap(dQ, dV, temperature, cycles=1000)
 
     report(
         V0,
