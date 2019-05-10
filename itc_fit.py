@@ -11,7 +11,7 @@ from tqdm import tqdm
 # XM is the variable combining the concentration of the guest(X) and the host (M)
 # according to the manual referenced above
 # 05/08/19 Changed how the code deals with skipping of the first n data points
-# Renamed variables 
+# Renamed variables
 
 V0 = 0.202 / 1000  # Cell Volume (L)
 M0 = 0.005  # Cell Concentration (M)
@@ -19,7 +19,7 @@ X0 = 0.07500  # Injectant Concentration (M)
 syringe_error = 0.02  # percent
 cell_error = 0.02  # percent
 heat_error = 0.01  # percent
-base_error = 0.00000015  # calories
+base_error = 0.000_000_15  # calories
 
 
 def process(file):
@@ -48,7 +48,7 @@ def plot(XM, ITC, vardQ, name, dH, K, N, dG):
     ax.scatter(XM[0, 1:] / XM[1, 1:], ITC, c="k", label="ITC data")
     for index, dQ in enumerate(vardQ.T):
         ax.plot(
-            XM[0, 1+skip:] / XM[1, 1+skip:],
+            XM[0, 1 + skip :] / XM[1, 1 + skip :],
             dQ,
             c="r",
             label="Equation fit" if index == 0 else "",
@@ -96,7 +96,7 @@ def fit(XMa, dH, K, N):
             dV[i - 1] * X0
         )
     # We are not fitting the first skip points and and heat release before injection 1 is 0.0
-    return dQ[skip+1:]
+    return dQ[skip + 1 :]
 
 
 def bootstrap(dQ, dV, temperature, cycles=100):
@@ -115,11 +115,11 @@ def bootstrap(dQ, dV, temperature, cycles=100):
     bootstrap_K = np.zeros([cycles])
     bootstrap_N = np.zeros([cycles])
     bootstrap_SS = np.zeros([cycles])
-    # We are not fitting the first 'skip' elements. Therefore the array of fitted dQ is smaller. 
+    # We are not fitting the first 'skip' elements. Therefore the array of fitted dQ is smaller.
     # As we are only fitting the differences we can ignore the first skip elements in the fitting easily
     # For every cycle we are storing the full set of calculate dQ values
-    bootstrap_dQ = np.zeros([len(dQ)-skip, cycles])
-    #print(V0)
+    bootstrap_dQ = np.zeros([len(dQ) - skip, cycles])
+    # print(V0)
     for cycle in tqdm(range(cycles)):
         # Initial Guesses
         initial_guess = np.zeros(3)  # Guess Array
@@ -135,8 +135,8 @@ def bootstrap(dQ, dV, temperature, cycles=100):
         XM = np.zeros([2, len(dQ) + 1])
 
         # Concentration beore 1st injection
-        XM[0, 0] = 0 # Guest concentration in cell
-        XM[1, 0] = M0 # Starting host concentration in cell
+        XM[0, 0] = 0  # Guest concentration in cell
+        XM[1, 0] = M0  # Starting host concentration in cell
 
         cumulative_volume = np.cumsum(dV)
 
@@ -165,14 +165,18 @@ def bootstrap(dQ, dV, temperature, cycles=100):
         ]
 
         # Fit the data
-        # We are only fitting the experimental heat realizes after skip. Therefore, ignore the first 'skip' 
-        # heat releases 
+        # We are only fitting the experimental heat realizes after skip. Therefore, ignore the first 'skip'
+        # heat releases
         # XM still has all datapoints
         try:
-            fitting_variables, _ = curve_fit(fit, XM, exp_dQ_normalized[skip:], initial_guess, maxfev=100)
+            fitting_variables, _ = curve_fit(
+                fit, XM, exp_dQ_normalized[skip:], initial_guess, maxfev=100
+            )
         except RuntimeError:
-            print("Curve fit failure. Possibly weak binder.")
-            fitting_variables, _ = curve_fit(fit, XM, exp_dQ_normalized[skip:], initial_guess, maxfev=10000)
+            # print("Curve fit failure. Possibly weak binder.")
+            fitting_variables, _ = curve_fit(
+                fit, XM, exp_dQ_normalized[skip:], initial_guess, maxfev=10000
+            )
             pass
         dH = fitting_variables[0]
         K = fitting_variables[1]
@@ -182,9 +186,8 @@ def bootstrap(dQ, dV, temperature, cycles=100):
         fitdQ = fit(XM, dH, K, N)
 
         SumSqr = 0.0
-        for i in range(skip,len(dQ)):
-            SumSqr += (exp_dQ_normalized[i] - fitdQ[i-skip]) ** 2
-            #bootstrap_heat[i-skip, cycle] = fitdQ[i-skip]
+        for i in range(skip, len(dQ)):
+            SumSqr += (exp_dQ_normalized[i] - fitdQ[i - skip]) ** 2
 
         bootstrap_dH[cycle] = dH
         bootstrap_K[cycle] = K
@@ -196,14 +199,12 @@ def bootstrap(dQ, dV, temperature, cycles=100):
     threshold = 1 * bootstrap_SS.mean() + 7.0 * np.sqrt(bootstrap_SS.std())
     for cycle in range(cycles - 1, -1, -1):
         if bootstrap_SS[cycle] > threshold:
-            #print('Rejecting cycle number {}'.format(cycle))
             bootstrap_dH = np.delete(bootstrap_dH, cycle)
             bootstrap_K = np.delete(bootstrap_K, cycle)
             bootstrap_N = np.delete(bootstrap_N, cycle)
             bootstrap_SS = np.delete(bootstrap_SS, cycle)
             bootstrap_dQ = np.delete(bootstrap_dQ, cycle, 1)
     # Only use number of bootstrapping cycles defined in the main program.
-    # print(realcycles)
     bootstrap_dH = bootstrap_dH[:realcycles]
     bootstrap_K = bootstrap_K[:realcycles]
     bootstrap_N = bootstrap_N[:realcycles]
@@ -212,7 +213,7 @@ def bootstrap(dQ, dV, temperature, cycles=100):
 
     # Shortcut to get the exact uncertainty in delta G assuming both delta G and K are well-behaved Gaussians.
     # This could be resampled.
-    R = 1.9872036 * 10 ** -3  # kcal K^-1 mol^-1
+    R = 1.987_203_6 * 10 ** -3  # kcal K^-1 mol^-1
     dG_sem = R * temperature * np.std(bootstrap_K) / np.mean(bootstrap_K)
     dG = -R * temperature * np.log(np.mean(bootstrap_K))
 
@@ -269,50 +270,42 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("-f", "--file", help="Raw ITC data", required=True)
     ap.add_argument(
-        "-s", "--skip", help="Number of injections to skip (default: 0)", required=False
+        "-s",
+        "--skip",
+        help="Number of injections to skip (default: 0)",
+        default=0,
+        required=False,
     )
     ap.add_argument(
         "-t",
         "--temperature",
         help="Temperature of the experiment (default: 300.15 K)",
+        default=300.15,
         required=False,
     )
     ap.add_argument(
         "-M",
         "--M0",
         help="Cell concentration in Molar (default: 0.005 M)",
+        default=0.005,
         required=False,
     )
     ap.add_argument(
         "-X",
         "--X0",
         help="Injectant concentration in Molar (default: 0.075 M)",
+        default=0.075,
         required=False,
     )
     args = vars(ap.parse_args())
 
-    if not args["temperature"]:
-        temperature = 300.15
-    else:
-        temperature = float(args["temperature"])
-    if not args["skip"]:
-        skip = 0
-    else:
-        skip = int(args["skip"])
-
-    if args["X0"]:
-        X0 = float(args["X0"])
-    if args["M0"]:
-        M0 = float(args["M0"])
+    temperature = float(args["temperature"])
+    skip = int(args["skip"])
+    X0 = float(args["X0"])
+    M0 = float(args["M0"])
 
     # Load heat (dQ) and injection volumes (dV)
     dQ, dV = process(args["file"])
-
-    # We do not want to change the cell volume. The cell volume is always the same.
-    #for index, skipped_injection in enumerate(range(skip)):
-    #    V0 += dV[index]
-    #    print(f"Skipping injection number {index + 1}...")
-    #    print(f"{'New cell volume = ':<20} {V0:5.7f} L")
 
     # dQ and XM include the complete data from the ITC output file.
     vardQ, XM, dH, K, N, dG, dG_sem = bootstrap(dQ, dV, temperature, cycles=1000)
