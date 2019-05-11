@@ -308,6 +308,8 @@ if __name__ == "__main__":
     dQ, dV = process(args["file"])
 
     # dQ and XM include the complete data from the ITC output file.
+    # We refer to dQ as the heat release measured by the ITC and dH as the reaction enthalpy obtained from the fitting
+    # process
     vardQ, XM, dH, K, N, dG, dG_sem = bootstrap(dQ, dV, temperature, cycles=1000)
 
     report(
