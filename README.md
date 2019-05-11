@@ -3,7 +3,8 @@
 ## How it works
 
 This program analyzes data from VPITC and ITC200 ITC calorimeters.
-The data format is expected to be in 6 columns, formatted like: DH INJV Xt Mt XMt NDH. Please see the included file for an example. 
+The data format is expected to be in 2 columns, formatted like: DH(Heat release dQi) delta(Vi) (Volume of injection i).
+Additional columns are ignored. Please see the included file for an example. 
 The first line of the input is assumed to be a header and discarded; the last line of the input is assumed to be a footer and is discarded.
 The default values---and explanation---of the syringe error, cell error, heat error, and base error are taken from:
 
@@ -68,3 +69,10 @@ And generate a plot similar to this:
 ## Installation
 
 This Python 3 code depends on `numpy` for data processing, `scipy` for curve fitting, `matplotlib` for plotting, and `tqdm` for a progress bar, which can be installed using `pip install tqdm`.
+
+## Contributors
+
+- David Slochower 
+- Niel Henriksen
+- Michael Schauperl
+- Katy Kellett
