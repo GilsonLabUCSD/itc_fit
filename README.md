@@ -3,7 +3,7 @@
 ## How it works
 
 This program analyzes data from VPITC and ITC200 ITC calorimeters.
-The data format is expected to be in 2 columns, formatted like: DH(Heat release dQi) delta(Vi) (Volume of injection i).
+The data format is expected to be in 2 columns, formatted such that the first column is the heat released after injection `i` (in microcalories) and the second column is the volume of injection `i` (in microliters)
 Additional columns are ignored. Please see the included file for an example. 
 The first line of the input is assumed to be a header and discarded; the last line of the input is assumed to be a footer and is discarded.
 The default values---and explanation---of the syringe error, cell error, heat error, and base error are taken from:
