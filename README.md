@@ -22,8 +22,8 @@ Briefly, in each bootstrap cycle, the code resamples the syringe concentration, 
 ## Running
 
 ```
-$ python itc_fit.py --help
 usage: itc_fit.py [-h] -f FILE [-s SKIP] [-t TEMPERATURE] [-M M0] [-X X0]
+                  [-V V0]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -33,7 +33,8 @@ optional arguments:
                         Temperature of the experiment (default: 300.15 K)
   -M M0, --M0 M0        Cell concentration in Molar (default: 0.005 M)
   -X X0, --X0 X0        Injectant concentration in Molar (default: 0.075 M)
-  ```
+  -V V0, --V0 V0        Volume of the ITC cell in liters (default: 0.000202 L)
+```
 
 The only mandatory argument is the data file. The `--skip` argument will skip injections from the *beginning* of the file.
 
