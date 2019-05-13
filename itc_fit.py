@@ -8,17 +8,16 @@ from tqdm import tqdm
 # 01/31/19 Rejection of bad fits based on sum of squared errors
 # Reference: http://www.isbg.fr/IMG/pdf/microcal-itc200-system-user-manual-malvern.pdf
 # ITC settings
-# XM is the variable combining the concentration of the guest(X) and the host (M)
+# XM is the variable combining the concentration of the guest (X) and the host (M)
 # according to the manual referenced above
 # 05/08/19 Changed how the code deals with skipping of the first n data points
 # Renamed variables
 
-V0 = 0.202 / 1000  # Cell Volume (L)
 M0 = 0.005  # Cell Concentration (M)
 X0 = 0.07500  # Injectant Concentration (M)
-syringe_error = 0.02  # percent
-cell_error = 0.02  # percent
-heat_error = 0.01  # percent
+syringe_error = 0.02  # fraction (out of 1.0)
+cell_error = 0.02  # fraction (out of 1.0)
+heat_error = 0.01  # fraction (out of 1.0)
 base_error = 0.000_000_15  # calories
 
 
@@ -297,12 +296,20 @@ if __name__ == "__main__":
         default=0.075,
         required=False,
     )
+    ap.add_argument(
+        "-V",
+        "--V0",
+        help="Volume of the ITC cell in liters (default: 0.000202 L)",
+        default=0.202 / 1000,
+        required=False,
+    )
     args = vars(ap.parse_args())
 
     temperature = float(args["temperature"])
     skip = int(args["skip"])
     X0 = float(args["X0"])
     M0 = float(args["M0"])
+    V0 = float(args["V0"])
 
     # Load heat (dQ) and injection volumes (dV)
     dQ, dV = process(args["file"])
