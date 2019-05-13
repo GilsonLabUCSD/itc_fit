@@ -76,3 +76,4 @@ This Python 3 code depends on `numpy` for data processing, `scipy` for curve fit
 - Niel Henriksen
 - Michael Schauperl
 - Katy Kellett
+- Sam Kantonen
